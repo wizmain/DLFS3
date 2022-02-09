@@ -1,8 +1,23 @@
+# UTF-8
 import sys
 import numpy as np
 import unittest
 import heapq
 import weakref
+import contextlib
+
+class Config:
+    enable_backprop = True
+
+@contextlib.contextmanager
+def using_config(name, value):
+    old_value = getattr(Config, name)
+    setattr(Config, name, value)
+    try:
+        yield
+    finally:
+        setattr(Config, name, old_value)
+
 
 class Variable:
     def __init__(self, data, name=None):
@@ -87,6 +102,7 @@ class Variable:
 
     __array_priority__ = 200
 
+
 class Function:
     def __call__(self, *inputs):
         inputs = [as_variable(x) for x in inputs]
@@ -121,9 +137,6 @@ class Exp(Function):
         gx = np.exp(x) * gy
         return gx
 
-def exp(x):
-    return Exp()(x)
-
 class Square(Function):
     def forward(self, x):
         y = x ** 2
@@ -134,9 +147,6 @@ class Square(Function):
         gx = 2 * x * gy
         return gx
 
-def square(x):
-    return Square()(x)
-
 class Add(Function):
     def forward(self, x0, x1):
         y = x0 + x1
@@ -144,13 +154,6 @@ class Add(Function):
 
     def backward(self, gy):
         return gy, gy
-
-def add(x0, x1):
-    x1 = as_array(x1)
-    return Add()(x0, x1)
-
-Variable.__add__ = add
-Variable.__radd__ = add
 
 class Mul(Function):
     def forward(self, x0, x1):
@@ -161,13 +164,6 @@ class Mul(Function):
         x0, x1 = self.inputs[0].data, self.inputs[1].data
         return gy * x1, gy * x0
 
-def mul(x0, x1):
-    x1 = as_array(x1)
-    return Mul()(x0, x1)
-
-Variable.__mul__ = mul
-Variable.__rmul__ = mul
-
 class Neg(Function):
     def forward(self, x):
         return -x
@@ -175,28 +171,12 @@ class Neg(Function):
     def backward(self, gy):
         return -gy
 
-def neg(x):
-    return Neg()(x)
-
-Variable.__neg__ = neg 
-
 class Sub(Function):
     def forward(self, x0, x1):
         y = x0 - x1
         return y
     def backward(self, gy):
         return gy, -gy
-
-def sub(x0, x1):
-    x1 = as_array(x1)
-    return Sub()(x0, x1)
-
-def rsub(x0, x1):
-    x1 = as_array(x1)
-    return Sub()(x1, x0) # x0와 x1의 순서를 바꾼다.
-
-Variable.__sub__ = sub  
-Variable.__rsub__ = rsub  
 
 class Div(Function):
     def forward(self, x0, x1):
@@ -208,19 +188,6 @@ class Div(Function):
         gx0 = gy / x1
         gx1 = gy * (-x0 / x1 ** 2)
         return gx0, gx1
-
-def div(x0, x1):
-    x1 = as_array(x1)
-    return Div()(x0, x1)
-
-def rdiv(x0, x1):
-    x1 = as_array(x1)
-    return Div()(x1, x0) # x0와 x1의 순서를 바꾼다.
-
-Variable.__truediv__ = div
-Variable.__rtruediv__ = rdiv
-
-
 
 class Pow(Function):
     def __init__(self, c):
@@ -236,15 +203,41 @@ class Pow(Function):
         gx = c * x ** (c - 1) * gy
         return gx
 
+def exp(x):
+    return Exp()(x)
+
+def square(x):
+    return Square()(x)
+
+def add(x0, x1):
+    x1 = as_array(x1)
+    return Add()(x0, x1)
+
+def mul(x0, x1):
+    x1 = as_array(x1)
+    return Mul()(x0, x1)
+
+def neg(x):
+    return Neg()(x)
+
+def sub(x0, x1):
+    x1 = as_array(x1)
+    return Sub()(x0, x1)
+
+def rsub(x0, x1):
+    x1 = as_array(x1)
+    return Sub()(x1, x0) # x0와 x1의 순서를 바꾼다.
+
+def div(x0, x1):
+    x1 = as_array(x1)
+    return Div()(x0, x1)
+
+def rdiv(x0, x1):
+    x1 = as_array(x1)
+    return Div()(x1, x0) # x0와 x1의 순서를 바꾼다.
+
 def pow(x, c):
     return Pow(c)(x)
-
-Variable.__pow__ = pow
-
-class Config:
-    enable_backprop = True
-
-
 
 def as_array(x):
     if np.isscalar(x):
@@ -267,6 +260,16 @@ def as_variable(obj):
         return obj
     return Variable(obj)
 
-a = Variable(np.array(2.0))
-b = a ** 3
-print(b)
+
+def setup_variable():
+    Variable.__add__ = add
+    Variable.__radd__ = add
+    Variable.__mul__ = mul
+    Variable.__rmul__ = mul
+    Variable.__neg__ = neg
+    Variable.__sub__ = sub
+    Variable.__rsub__ = rsub
+    Variable.__truediv__ = div
+    Variable.__rtruediv__ = rdiv
+    Variable.__pow__ = pow
+

@@ -3,24 +3,38 @@ if '__file__' in globals():
     sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import numpy as np
 from dezero import Variable
-from dezero import Function
+import dezero.functions as F
+import matplotlib.pyplot as plt
+from dezero.utils import plot_dot_graph
 
-class Sin(Function):
-    def forward(self, x):
-        y = np.sin(x)
-        return y
 
-    def backward(self, gy):
-        x = self.inputs[0].data
-        gx = gy * np.cos(x)
-        return gx
+np.random.seed(0)
+x = np.random.rand(100, 1)
+y = 5 + 2 * x + np.random.rand(100, 1)
+x, y = Variable(x), Variable(y)
 
-def sin(x):
-    return Sin()(x)
+W = Variable(np.zeros((1,1)))
+b = Variable(np.zeros(1))
 
-x = Variable(np.array(np.pi/4))
-y = sin(x)
-y.backward()
+def predict(x):
+    y = F.matmul(x, W) + b
+    return y
 
-print(y.data)
-print(x.grad)
+def mean_squared_error(x0, x1):
+    diff = x0 - x1
+    return F.sum(diff ** 2) / len(diff)
+
+lr = 0.1
+iters = 100
+
+for i in range(iters):
+    y_pred = predict(x)
+    loss = mean_squared_error(y, y_pred)
+
+    W.cleargrad()
+    b.cleargrad()
+    loss.backward()
+
+    W.data -= lr * W.grad.data
+    b.data -= lr * b.grad.data
+    print(W, b, loss)

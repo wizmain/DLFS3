@@ -157,6 +157,9 @@ class Exp(Function):
         gx = np.exp(x) * gy
         return gx
 
+def exp(x):
+    return Exp()(x)
+
 class Square(Function):
     def forward(self, x):
         y = x ** 2
@@ -166,6 +169,9 @@ class Square(Function):
         x = self.inputs[0].data
         gx = 2 * x * gy
         return gx
+
+def square(x):
+    return Square()(x)
 
 class Add(Function):
     def forward(self, x0, x1):
@@ -180,6 +186,10 @@ class Add(Function):
             gx1 = dezero.functions.sum_to(gx1, self.x1_shape)
         return gx0, gx1
 
+def add(x0, x1):
+    x1 = as_array(x1)
+    return Add()(x0, x1)
+
 class Mul(Function):
     def forward(self, x0, x1):
         y = x0 * x1
@@ -190,6 +200,10 @@ class Mul(Function):
         x0, x1 = self.inputs
         return gy * x1, gy * x0
 
+def mul(x0, x1):
+    x1 = as_array(x1)
+    return Mul()(x0, x1)
+
 class Neg(Function):
     def forward(self, x):
         return -x
@@ -197,12 +211,23 @@ class Neg(Function):
     def backward(self, gy):
         return -gy
 
+def neg(x):
+    return Neg()(x)
+
 class Sub(Function):
     def forward(self, x0, x1):
         y = x0 - x1
         return y
     def backward(self, gy):
         return gy, -gy
+
+def sub(x0, x1):
+    x1 = as_array(x1)
+    return Sub()(x0, x1)
+
+def rsub(x0, x1):
+    x1 = as_array(x1)
+    return Sub()(x1, x0) # x0와 x1의 순서를 바꾼다.
 
 class Div(Function):
     def forward(self, x0, x1):
@@ -214,6 +239,14 @@ class Div(Function):
         gx0 = gy / x1
         gx1 = gy * (-x0 / x1 ** 2)
         return gx0, gx1
+
+def div(x0, x1):
+    x1 = as_array(x1)
+    return Div()(x0, x1)
+
+def rdiv(x0, x1):
+    x1 = as_array(x1)
+    return Div()(x1, x0) # x0와 x1의 순서를 바꾼다.
 
 class Pow(Function):
     def __init__(self, c):
@@ -229,41 +262,11 @@ class Pow(Function):
         gx = c * x ** (c - 1) * gy
         return gx
 
-def exp(x):
-    return Exp()(x)
-
-def square(x):
-    return Square()(x)
-
-def add(x0, x1):
-    x1 = as_array(x1)
-    return Add()(x0, x1)
-
-def mul(x0, x1):
-    x1 = as_array(x1)
-    return Mul()(x0, x1)
-
-def neg(x):
-    return Neg()(x)
-
-def sub(x0, x1):
-    x1 = as_array(x1)
-    return Sub()(x0, x1)
-
-def rsub(x0, x1):
-    x1 = as_array(x1)
-    return Sub()(x1, x0) # x0와 x1의 순서를 바꾼다.
-
-def div(x0, x1):
-    x1 = as_array(x1)
-    return Div()(x0, x1)
-
-def rdiv(x0, x1):
-    x1 = as_array(x1)
-    return Div()(x1, x0) # x0와 x1의 순서를 바꾼다.
-
 def pow(x, c):
     return Pow(c)(x)
+
+class Parameter(Variable):
+    pass
 
 def as_array(x):
     if np.isscalar(x):
